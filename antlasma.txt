@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sadrazamın Mühürü: PRO Soru Bankası</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Kalam:wght@400;700&family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --paper-color: #fdf5e6;
+            --ink-color: #2c3e50;
+            --wood-dark: #1a0f0a;
+            --wood-light: #3e2723;
+            --gold: #d4af37;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            background: radial-gradient(circle, var(--wood-light), var(--wood-dark));
+            font-family: 'Cinzel', serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- UI --- */
+        #hud {
+            position: absolute;
+            top: 20px;
+            width: 90%;
+            display: flex;
+            justify-content: space-between;
+            color: #deb887;
+            font-size: 1.2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .hud-box {
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid #5d4037;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        /* --- MASA VE KAĞIT --- */
+        #desk {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            height: 600px; /* Kağıt boyutu biraz arttı */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .paper {
+            width: 85%;
+            max-width: 550px;
+            height: 550px;
+            background-color: var(--paper-color);
+            background-image: url('https://www.transparenttextures.com/patterns/aged-paper.png');
+            box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+            padding: 35px 45px;
+            box-sizing: border-box;
+            font-family: 'Kalam', cursive;
+            color: var(--ink-color);
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            border-radius: 2px;
+            z-index: 5;
+            transition: transform 0.5s;
+        }
+        
+        .paper-content {
+            width: 100%;
+            font-size: 1.1rem;
+            line-height: 1.5;
+            max-height: 100%;
+            overflow-y: auto;
+        }
+
+        /* Öncül Listesi */
+        .premise-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0 0 15px 0;
+            width: 100%;
+            text-align: left;
+        }
+        
+        .premise-list li {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .premise-num {
+            font-weight: bold;
+            margin-right: 8px;
+            min-width: 25px;
+            color: #c0392b;
+        }
+
+        .q-header {
+            font-family: 'Cinzel', serif;
+            font-weight: bold;
+            text-decoration: underline;
+            margin-bottom: 20px;
+            display: block;
+            text-align: center;
+            font-size: 1.3rem;
+            color: #8e44ad;
+        }
+
+        .q-footer {
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: center;
+            border-top: 2px dashed rgba(0,0,0,0.1);
+            padding-top: 10px;
+            font-size: 1rem;
+            color: #7f8c8d;
+        }
+
+        .paper::before {
+            content: '';
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            border: 2px solid rgba(0,0,0,0.1);
+            pointer-events: none;
+        }
+
+        /* DAMGA */
+        .stamp-mark {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 5px solid;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Cinzel', serif;
+            font-weight: bold;
+            font-size: 1.2rem;
+            transform: rotate(-20deg) scale(0);
+            opacity: 0;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: rgba(255,255,255,0.1);
+            z-index: 6;
+        }
+
+        .stamp-mark.approved {
+            border-color: #27ae60; color: #27ae60;
+            transform: rotate(-20deg) scale(1); opacity: 0.95;
+        }
+        .stamp-mark.approved::after { content: 'DOĞRU'; }
+
+        .stamp-mark.rejected {
+            border-color: #c0392b; color: #c0392b;
+            transform: rotate(-20deg) scale(1); opacity: 0.95;
+        }
+        .stamp-mark.rejected::after { content: 'HATALI'; }
+
+        /* --- MÜHÜRLER --- */
+        #seal-container {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            width: 100%;
+            max-width: 800px;
+            z-index: 10;
+        }
+
+        .seal-btn {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #a93226, #641e16);
+            border: 3px solid #cb4335;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            color: #ecf0f1;
+            font-family: 'Cinzel', serif;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 5px;
+            transition: transform 0.1s;
+        }
+        .seal-btn:active { transform: scale(0.9); }
+        .seal-btn:hover { background: radial-gradient(circle at 30% 30%, #c0392b, #7b241c); }
+
+        /* --- BİLGİ PENCERESİ (MODAL) --- */
+        #info-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .info-card {
+            background: #fff;
+            width: 90%;
+            max-width: 600px;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 10px solid #3498db;
+            box-shadow: 0 0 30px rgba(255,255,255,0.1);
+            font-family: 'Segoe UI', sans-serif;
+            animation: slideUp 0.3s;
+        }
+
+        .info-card h2 { margin-top: 0; color: #2c3e50; font-size: 1.5rem; }
+        .info-card p { color: #555; line-height: 1.6; font-size: 1.1rem; }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        .status-correct { background-color: #27ae60; }
+        .status-wrong { background-color: #c0392b; }
+
+        .continue-btn {
+            background: #2c3e50; color: white; border: none;
+            padding: 12px 30px; font-size: 1rem; border-radius: 5px;
+            cursor: pointer; float: right; margin-top: 15px;
+        }
+        .continue-btn:hover { background: #34495e; }
+
+        /* --- EKRANLAR --- */
+        #start-screen, #victory-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+        }
+        
+        #victory-screen { display: none; }
+
+        button.big-btn {
+            font-size: 1.5rem; padding: 15px 40px;
+            background: #d35400; color: white;
+            border: none; cursor: pointer; margin-top: 20px;
+            font-family: 'Cinzel', serif; border-radius: 5px;
+        }
+
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(-500px) rotate(5deg); opacity: 0; } to { transform: translateY(0) rotate(0); opacity: 1; } }
+        @keyframes slideOut { to { transform: translateX(500px) rotate(10deg); opacity: 0; } }
+        
+        /* Scrollbar */
+        .paper-content::-webkit-scrollbar { width: 5px; }
+        .paper-content::-webkit-scrollbar-track { background: transparent; }
+        .paper-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 5px; }
+
+    </style>
+</head>
+<body>
+
+    <div id="hud">
+        <div class="hud-box">Puan: <span id="score">0</span></div>
+        <div class="hud-box" style="color: var(--gold)">Kalan Belge: <span id="remaining-count">0</span></div>
+    </div>
+
+    <div id="desk">
+        <div class="paper" id="paper">
+            <div class="paper-content" id="q-text">Belgeler Hazırlanıyor...</div>
+            <div id="stamp" class="stamp-mark"></div>
+        </div>
+    </div>
+
+    <div id="seal-container">
+        </div>
+
+    <div id="info-modal">
+        <div class="info-card" id="info-card">
+            <span id="modal-status" class="status-badge"></span>
+            <h2 id="modal-title">Cevap</h2>
+            <p id="modal-desc">Açıklama metni buraya gelecek.</p>
+            <button class="continue-btn" onclick="closeModal()">Sıradaki Belge &rarr;</button>
+        </div>
+    </div>
+
+    <div id="start-screen">
+        <h1 style="font-size: 3rem; margin-bottom:10px; color: var(--gold)">SADRAZAMIN MÜHRÜ</h1>
+        <p style="font-size: 1.2rem; color:#fff;">PRO SORU BANKASI MODU</p>
+        <p style="font-size: 1rem; color:#aaa; margin-top:0;">ÖSYM Tipi Dolambaçlı Sorular + Tam Öğrenme</p>
+        <button class="big-btn" onclick="initGame()">MESAİYE BAŞLA</button>
+    </div>
+
+    <div id="victory-screen">
+        <h1 style="font-size: 3rem; color: #27ae60; margin-bottom: 20px;">ZAFER!</h1>
+        <p style="font-size: 1.5rem;">İmparatorluğun tüm diplomatik krizleri çözüldü.</p>
+        <div style="font-size: 2rem; margin: 20px; color: var(--gold)">Puan: <span id="final-score">0</span></div>
+        <button class="big-btn" onclick="location.reload()">TEKRAR ET</button>
+    </div>
+
+    <script>
+        let audioCtx;
+        function initAudio() {
+            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playSound(type) {
+            initAudio();
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'stamp') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.1); gain.gain.setValueAtTime(1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15); osc.start(now); osc.stop(now + 0.15);
+            } else if (type === 'correct') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1); gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 1); osc.start(now); osc.stop(now + 1);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(100, now + 0.3); gain.gain.setValueAtTime(0.5, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3); osc.start(now); osc.stop(now + 0.3);
+            }
+        }
+
+        // --- MASTER DATABASE (GENİŞLETİLMİŞ VE ZORLAŞTIRILMIŞ) ---
+        const masterDatabase = [
+            // AMASYA (1555)
+            { q: "Osmanlı-İran savaşlarına ilk kez resmi bir ara veren ve Kanuni Sultan Süleyman döneminde imzalanan, Bağdat'ın Osmanlı'da kalmasını hukuki zemine oturtan antlaşma hangisidir?", a: "Amasya Ant.", info: "1555 Amasya Antlaşması: İran ile ilk resmi antlaşmadır.", distractors: ["Ferhat Paşa", "Nasuh Paşa", "Kasrı Şirin"] },
+            { q: `<ul class='premise-list'><li><span class='premise-num'>I.</span> İran ile imzalanan ilk resmi antlaşmadır.</li><li><span class='premise-num'>II.</span> Doğu sınırının temelleri atılmıştır.</li><li><span class='premise-num'>III.</span> Safevi tehlikesi tamamen sona ermiştir.</li></ul><p class='q-footer'>Amasya Antlaşması (1555) ile ilgili yukarıdakilerden hangileri doğrudur?</p>`, a: "I ve II", info: "Amasya Antlaşması ile Safevi tehlikesi bitmemiş, savaşlar daha sonra devam etmiştir.", distractors: ["Yalnız I", "I, II ve III", "Yalnız II"] },
+
+            // FERHAT PAŞA (1590)
+            { q: "Osmanlı Devleti'nin doğuda Hazar Denizi'ne kadar ulaşarak 'en geniş sınırlara' sahip olmasını sağlayan antlaşma hangisidir?", a: "Ferhat Paşa", info: "1590 Ferhat Paşa: Doğuda en geniş sınırlar.", distractors: ["Amasya Ant.", "Nasuh Paşa", "Serav Ant."] },
+            { q: "Duraklama Dönemi'nde İran ile yapılan savaşlar sonucunda imzalanan ve Osmanlı'nın Tebriz, Karabağ gibi bölgeleri alarak doğudaki hakimiyetini zirveye taşıdığı antlaşma?", a: "Ferhat Paşa", info: "Ferhat Paşa Antlaşması ile doğu sınırları zirveye ulaşmıştır.", distractors: ["Kasrı Şirin", "Kerden Ant.", "Nasuh Paşa"] },
+
+            // NASUH PAŞA (1612)
+            { q: "Osmanlı Devleti'nin Ferhat Paşa Antlaşması ile kazandığı toprakları geri vererek 1555 Amasya Antlaşması sınırlarına dönmeyi kabul ettiği, buna karşılık İran'ın 200 yük ipek vermeyi taahhüt ettiği antlaşma hangisidir?", a: "Nasuh Paşa", info: "1612 Nasuh Paşa: Toprak kaybı yaşanmış, eski sınırlara dönülmüştür.", distractors: ["Serav Ant.", "Kerden Ant.", "Ahmet Paşa"] },
+
+            // SERAV (1618)
+            { q: "İran'ın Nasuh Paşa Antlaşması şartlarına uymaması üzerine yapılan sefer sonucunda imzalanan ve İran'ın ödeyeceği ipek vergisinin 200 yükten 100 yüke düşürüldüğü antlaşma?", a: "Serav Ant.", info: "1618 Serav: Vergi yükü hafifletilmiştir.", distractors: ["Nasuh Paşa", "Amasya Ant.", "Kerden Ant."] },
+
+            // KASRI ŞİRİN (1639)
+            { q: "IV. Murat'ın Bağdat ve Revan seferleri sonucunda imzalanan, Zağros Dağları'nın sınır kabul edildiği ve bugünkü Türkiye-İran sınırının temellerini atan antlaşma hangisidir?", a: "Kasrı Şirin", info: "1639 Kasrı Şirin: En kalıcı doğu sınır antlaşmasıdır.", distractors: ["Amasya Ant.", "Kerden Ant.", "Ferhat Paşa"] },
+            { q: `<span class='q-header'>KASRI ŞİRİN ANTLAŞMASI</span><ul class='premise-list'><li><span class='premise-num'>I.</span> Bağdat Osmanlı'da kalmıştır.</li><li><span class='premise-num'>II.</span> Azerbaycan İran'a bırakılmıştır.</li><li><span class='premise-num'>III.</span> Doğu sorunu tamamen çözülmüştür.</li></ul><p class='q-footer'>Yargılarından hangileri doğrudur?</p>`, a: "I ve II", info: "Doğu sorunu tamamen çözülmemiş, 1700'lerde savaşlar tekrar etmiştir (Ahmet Paşa, Kerden vb).", distractors: ["Yalnız I", "I, II ve III", "II ve III"] },
+
+            // BUCAŞ (1672)
+            { q: "Osmanlı Devleti'nin Podolya arazisini alarak Batı'da toprak kazandığı ve sınırlarını en geniş hale getirdiği son antlaşma hangisidir?", a: "Bucaş Ant.", info: "1672 Bucaş (Lehistan): Batıda en geniş sınırlar.", distractors: ["Karlofça", "Zitvatorok", "Vasvar Ant."] },
+
+            // BAHÇESARAY (1681)
+            { q: "Osmanlı Devleti ile Çarlık Rusya arasında imzalanan ve Dinyeper Nehri'nin sınır kabul edildiği 'İlk Osmanlı-Rus Antlaşması' hangisidir?", a: "Bahçesaray", info: "Diğer adı Çehrin Antlaşmasıdır.", distractors: ["İstanbul Ant.", "Prut Ant.", "Küçük Kaynarca"] },
+
+            // KARLOFÇA (1699)
+            { q: "Kutsal İttifak savaşları sonucunda İngiltere ve Hollanda'nın arabuluculuğu ile imzalanan, Osmanlı'nın Batı'da ilk kez büyük çapta toprak kaybettiği ve Gerileme Dönemi'nin başlangıcı sayılan antlaşma?", a: "Karlofça", info: "1699 Karlofça: Macaristan'ın kaybı ve savunma psikolojisinin başlangıcı.", distractors: ["Pasarofça", "İstanbul Ant.", "Vasvar Ant."] },
+            { q: `<span class='q-header'>KARLOFÇA ANTLAŞMASI</span><ul class='premise-list'><li><span class='premise-num'>I.</span> Temeşvar hariç Macaristan Avusturya'ya verilmiştir.</li><li><span class='premise-num'>II.</span> Mora Yarımadası Venedik'e verilmiştir.</li><li><span class='premise-num'>III.</span> Rusya'ya Azak Kalesi verilmiştir.</li></ul><p class='q-footer'>Yukarıdakilerden hangileri Karlofça kapsamında DEĞİLDİR?</p>`, a: "Yalnız III", info: "Rusya ile Karlofça'da değil, 1 yıl sonraki İstanbul Antlaşması'nda (1700) anlaşılmış ve Azak verilmiştir.", distractors: ["Yalnız I", "I ve II", "II ve III"] },
+
+            // İSTANBUL (1700)
+            { q: "Rusya'nın Azak Kalesi'ni ele geçirerek Karadeniz'e inme siyasetinde ilk somut adımı attığı ve İstanbul'da daimi elçi bulundurma hakkı kazandığı antlaşma hangisidir?", a: "İstanbul (1700)", info: "1700 İstanbul Antlaşması: Karlofça'nın tamamlayıcısıdır.", distractors: ["Prut Ant.", "Küçük Kaynarca", "Yaş Ant."] },
+
+            // PRUT (1711)
+            { q: "İsveç Kralı Demirbaş Şarl'ın Osmanlı'ya sığınmasıyla başlayan süreçte Rusya'nın mağlup edildiği ve Karlofça ile kaybedilen toprakların geri alınabileceği ümidini doğuran antlaşma?", a: "Prut Ant.", info: "1711 Prut: Azak Kalesi geri alınmıştır.", distractors: ["İstanbul Ant.", "Belgrat Ant.", "Pasarofça"] },
+
+            // PASAROFÇA (1718)
+            { q: "Avusturya ve Venedik ile yapılan savaşların kaybedilmesi üzerine imzalanan, Osmanlı'nın Batı'nın teknik üstünlüğünü kabul ederek 'Lale Devri'ne girmesine neden olan antlaşma?", a: "Pasarofça", info: "1718 Pasarofça: Fetih politikası bitti, barış ve diplomasi dönemi başladı.", distractors: ["Karlofça", "Belgrat Ant.", "Ziştovi Ant."] },
+
+            // PATRONA HALİL (1730)
+            { q: "Zevk ve sefa dönemi olarak bilinen Lale Devri'ni kanlı bir isyanla sona erdiren, ancak matbaa gibi teknik yeniliklere dokunulmayan olay hangisidir?", a: "Patrona Halil", info: "1730 Patrona Halil İsyanı: III. Ahmet tahttan indirilmiştir.", distractors: ["Kabakçı Mustafa", "Kuleli Vakası", "Edirne Vakası"] },
+
+            // AHMET PAŞA (1732)
+            { q: "Lale Devri sonrasında Osmanlı ile İran arasında yapılan, ancak Şah tarafından onaylanmadığı için kalıcı olmayan ve savaşların devam etmesine neden olan 1732 tarihli antlaşma?", a: "Ahmet Paşa", info: "Ahmet Paşa Antlaşması kalıcı barış sağlamamıştır.", distractors: ["Kerden Ant.", "Kasrı Şirin", "Nasuh Paşa"] },
+
+            // BELGRAT (1739)
+            { q: "Osmanlı Devleti'nin 18. yüzyılda imzaladığı son kazançlı antlaşma olan ve Karadeniz'in Türk gölü olduğu özelliğinin son kez onaylandığı belge hangisidir?", a: "Belgrat Ant.", info: "1739 Belgrat Antlaşması ile Belgrat geri alınmıştır.", distractors: ["Pasarofça", "Küçük Kaynarca", "Ziştovi Ant."] },
+            { q: "1739 Belgrat Antlaşması'nda arabuluculuk yaptığı için Osmanlı Devleti tarafından kapitülasyonları 'daimi' hale getirilen devlet hangisidir?", a: "Fransa", info: "I. Mahmut döneminde Fransız kapitülasyonları sürekli hale getirilmiştir.", distractors: ["İngiltere", "Rusya", "Avusturya", "Hollanda"] }, // Şık tipi farklı ama mantık aynı
+
+            // KERDEN (1746)
+            { q: "Osmanlı-İran savaşlarını sona erdiren ve Kasrı Şirin sınırlarına geri dönüldüğü için 'İkinci Kasrı Şirin' olarak adlandırılan antlaşma?", a: "Kerden Ant.", info: "1746 Kerden Antlaşması.", distractors: ["Ahmet Paşa", "Serav Ant.", "Nasuh Paşa"] },
+
+            // KÜÇÜK KAYNARCA (1774)
+            { q: "Osmanlı Devleti'nin ilk kez savaş tazminatı ödediği, halkı Müslüman olan Kırım'ın bağımsızlığını tanıdığı ve Rusya'ya iç işlerine karışma fırsatı (Konsolosluk/Ortodoks himayesi) verdiği ağır antlaşma?", a: "K. Kaynarca", info: "1774 Küçük Kaynarca: Osmanlı tarihinin en ağır antlaşmalarından biridir.", distractors: ["Yaş Ant.", "Aynalıkavak", "Bükreş Ant."] },
+            { q: `<span class='q-header'>KÜÇÜK KAYNARCA (1774)</span><ul class='premise-list'><li><span class='premise-num'>I.</span> Kırım dini açıdan Halifeye bağlı kalacaktır.</li><li><span class='premise-num'>II.</span> Rusya Karadeniz'de donanma bulundurabilecektir.</li><li><span class='premise-num'>III.</span> Rusya Balkanlarda konsolosluk açabilecektir.</li></ul><p class='q-footer'>Bu maddelerin ortak amacı nedir?</p>`, a: "Rus Nüfuzu", info: "Bu maddelerle Rusya, Osmanlı üzerinde siyasi ve askeri baskı kurmayı ve sıcak denizlere inmeyi amaçlamıştır.", distractors: ["Barışı Korumak", "Ticari Kazanç", "Avrupa Uyumu"] },
+
+            // AYNALIKAVAK (1779)
+            { q: "Küçük Kaynarca'dan sonra Kırım'ın bağımsızlığının teyit edildiği ve Rus yanlısı Şahin Giray'ın hanlığının Osmanlı tarafından zorunlu olarak onaylandığı belge?", a: "Aynalıkavak", info: "Aynalıkavak Tenkihnamesi: Kırım'ın elden çıkış sürecindeki ikinci aşamadır.", distractors: ["Yaş Ant.", "Ziştovi Ant.", "Prut Ant."] },
+
+            // ZİŞTOVİ (1791)
+            { q: "1789 Fransız İhtilali'nin yaydığı milliyetçilik akımından çekinen Avusturya'nın, Osmanlı ile olan savaşını sonlandırarak imzaladığı barış antlaşması hangisidir?", a: "Ziştovi Ant.", info: "1791 Ziştovi: Osmanlı-Avusturya savaşları kalıcı olarak bitmiştir.", distractors: ["Yaş Ant.", "Belgrat Ant.", "Pasarofça"] },
+
+            // YAŞ (1792)
+            { q: "Kırım'ın Rusya'ya ait olduğunun resmen kabul edildiği, Osmanlı'nın Karadeniz hakimiyetinin sona erdiği ve Dağılma Dönemi'ni başlatan antlaşma?", a: "Yaş Ant.", info: "1792 Yaş Antlaşması: Kırım'ın kaybı kesinleşti.", distractors: ["Küçük Kaynarca", "Bükreş Ant.", "Aynalıkavak"] },
+
+            // PARİS 1802 (MISIR)
+            { q: "İngiltere'nin sömürge yollarını korumak amacıyla Osmanlı'ya destek vermesi ve 'Denge Politikası'nın ilk kez uygulanması sonucunda Fransa'nın Mısır'dan çekildiği antlaşma?", a: "Paris (1802)", info: "1802 Paris Antlaşması: Napolyon'un Mısır macerası sona erdi.", distractors: ["El Ariş", "Londra Ant.", "Kale-i Sultaniye"] },
+
+            // KALE-İ SULTANİYE (1809)
+            { q: "1809 yılında İngiltere ile imzalanan ve 'Boğazların barış zamanında yabancı savaş gemilerine kapalı olması' ilkesinin İngiltere tarafından da tanındığı antlaşma?", a: "Kale-i Sultaniye", info: "Diğer adı Çanakkale Antlaşmasıdır.", distractors: ["Hünkar İskelesi", "Londra Boğazlar", "Balta Limanı"] },
+
+            // BÜKREŞ (1812)
+            { q: "Rusya ile yapılan savaş sonucunda imzalanan ve Sırplara 'imtiyaz' (ayrıcalık) verilerek Osmanlı'da milliyetçilik kaynaklı ilk tavizin verildiği antlaşma?", a: "Bükreş Ant.", info: "1812 Bükreş: Sırp meselesinin ilk resmi belgesidir.", distractors: ["Edirne Ant.", "Berlin Ant.", "Ziştovi Ant."] },
+
+            // ŞARK SORUNU (1815)
+            { q: "Avrupa devletlerinin Osmanlı Devleti'ni parçalama ve topraklarını paylaşma planlarına verilen 'Şark Sorunu' ismi ilk kez nerede kullanılmıştır?", a: "Viyana Kongresi", info: "1815 Viyana Kongresi'nde Rus Çarı Alexander tarafından ortaya atılmıştır.", distractors: ["Paris Konf.", "Berlin Konf.", "Londra Konf."] },
+
+            // EDİRNE (1829)
+            { q: "Yunanlıların bağımsızlığını kazandığı, Sırpların ise özerk hale geldiği; Osmanlı'dan ilk kez bir azınlığın koparak devlet kurduğu antlaşma hangisidir?", a: "Edirne Ant.", info: "1829 Edirne Antlaşması: Yunanistan bağımsız oldu.", distractors: ["Bükreş Ant.", "Kütahya Ant.", "İstanbul Ant."] },
+
+            // KÜTAHYA (1833)
+            { q: "Mısır Valisi Kavalalı Mehmet Ali Paşa'nın isyanı sonucu ordularının Kütahya'ya kadar gelmesi üzerine imzalanan ve Osmanlı'nın kendi valisine toprak vermek zorunda kaldığı antlaşma?", a: "Kütahya Ant.", info: "1833 Kütahya: Mısır sorunu geçici olarak çözüldü.", distractors: ["Hünkar İskelesi", "Balta Limanı", "Londra Ant."] },
+
+            // HÜNKAR İSKELESİ (1833)
+            { q: "Osmanlı Devleti'nin 'Denize düşen yılana sarılır' diyerek Rusya ile imzaladığı, Rusya'ya Boğazlardan serbest geçiş hakkı tanıyan ve Boğazlar Sorunu'nu başlatan 8 yıllık ittifak antlaşması?", a: "Hünkar İskelesi", info: "Hünkar İskelesi: Osmanlı'nın Boğazlar üzerindeki son tek taraflı egemenlik kullanımıdır.", distractors: ["Londra Boğazlar", "Kütahya Ant.", "Balta Limanı"] },
+
+            // BALTA LİMANI (1838)
+            { q: "Mısır sorununda İngiltere'nin desteğini almak için imzalanan, Tekel (Yed-i Vahit) sistemini kaldıran ve Osmanlı ekonomisini dışa bağımlı hale getirerek 'Açık Pazar'a dönüştüren antlaşma?", a: "Balta Limanı", info: "1838 Balta Limanı: Osmanlı sanayisinin çöküş belgesidir.", distractors: ["Hünkar İskelesi", "Paris Ant.", "Kütahya Ant."] },
+
+            // LONDRA BOĞAZLAR (1841)
+            { q: "Hünkar İskelesi Antlaşması'nın süresinin dolması üzerine toplanan ve Boğazların uluslararası bir statü kazanarak savaş zamanı tüm devletlerin savaş gemilerine kapatıldığı sözleşme?", a: "Londra Sözleşmesi", info: "1841 Londra Boğazlar Sözleşmesi: Boğazlar üzerindeki mutlak Osmanlı egemenliği sona erdi.", distractors: ["Hünkar İskelesi", "Paris Ant.", "Berlin Ant."] },
+
+            // PARİS 1856
+            { q: "Kırım Savaşı sonrası imzalanan, Osmanlı'nın bir Avrupa devleti sayıldığı ve toprak bütünlüğünün Avrupa garantisine alındığı, ancak donanma bulunduramaması nedeniyle 'mağlup devlet' muamelesi gördüğü antlaşma?", a: "Paris (1856)", info: "1856 Paris: Osmanlı Avrupa hukukuna dahil edildi.", distractors: ["Londra Ant.", "Berlin Ant.", "Viyana Kongresi"] },
+
+            // AYASTEFANOS (1878)
+            { q: "93 Harbi (1877-78 Osmanlı-Rus Savaşı) sonunda imzalanan ancak Rusya'nın aşırı güçlenmesinden (Büyük Bulgaristan) rahatsız olan Avrupalı devletlerin itirazı ile yürürlüğe girmeyen 'ölü doğmuş' antlaşma?", a: "Ayastefanos", info: "Ayastefanos yerine Berlin Antlaşması imzalanmıştır.", distractors: ["Berlin Ant.", "Edirne Ant.", "Bükreş Ant."] },
+
+            // BERLİN (1878)
+            { q: `<span class='q-header'>BERLİN ANTLAŞMASI (1878)</span><ul class='premise-list'><li><span class='premise-num'>I.</span> Sırbistan, Karadağ ve Romanya bağımsız olmuştur.</li><li><span class='premise-num'>II.</span> Kars, Ardahan ve Batum Rusya'ya bırakılmıştır.</li><li><span class='premise-num'>III.</span> Ermeni meselesi uluslararası bir sorun haline gelmiştir.</li></ul><p class='q-footer'>Yukarıdaki yargılardan hangileri doğrudur?</p>`, a: "I, II ve III", info: "Berlin Antlaşması Osmanlı'nın Balkan hakimiyetini bitiren en ağır antlaşmalardan biridir.", distractors: ["Yalnız I", "I ve II", "II ve III"] }
+        ];
+
+        // --- OYUN DEĞİŞKENLERİ ---
+        let questionPool = []; 
+        let currentQuestionObj;
+        let currentIndexInPool;
+        let score = 0;
+        let isWaiting = false;
+
+        // DOM Elements
+        const paperEl = document.getElementById('paper');
+        const qTextEl = document.getElementById('q-text');
+        const stampEl = document.getElementById('stamp');
+        const sealContainer = document.getElementById('seal-container');
+        const scoreEl = document.getElementById('score');
+        const remainingCountEl = document.getElementById('remaining-count');
+        const modal = document.getElementById('info-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalDesc = document.getElementById('modal-desc');
+        const modalStatus = document.getElementById('modal-status');
+        const infoCard = document.getElementById('info-card');
+        const startScreen = document.getElementById('start-screen');
+        const victoryScreen = document.getElementById('victory-screen');
+
+        function initGame() {
+            // Havuzu master'dan kopyala
+            questionPool = [...masterDatabase];
+            score = 0;
+            scoreEl.innerText = score;
+            startScreen.style.display = 'none';
+            victoryScreen.style.display = 'none';
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            if(questionPool.length === 0) {
+                endGame();
+                return;
+            }
+
+            isWaiting = false;
+            remainingCountEl.innerText = questionPool.length;
+            
+            paperEl.style.animation = 'none';
+            paperEl.offsetHeight; 
+            paperEl.style.animation = 'slideIn 0.5s ease-out';
+            
+            stampEl.className = 'stamp-mark';
+
+            // Rastgele soru seç
+            currentIndexInPool = Math.floor(Math.random() * questionPool.length);
+            currentQuestionObj = questionPool[currentIndexInPool];
+            
+            qTextEl.innerHTML = currentQuestionObj.q;
+
+            generateSeals();
+        }
+
+        function generateSeals() {
+            sealContainer.innerHTML = '';
+            
+            // Doğru cevap + Çeldiriciler
+            let options = [currentQuestionObj.a];
+            
+            if (currentQuestionObj.distractors) {
+                options = options.concat(currentQuestionObj.distractors);
+            } else {
+                while(options.length < 4) {
+                    let randomQ = masterDatabase[Math.floor(Math.random() * masterDatabase.length)];
+                    if(!options.includes(randomQ.a)) options.push(randomQ.a);
+                }
+            }
+
+            options.sort(() => Math.random() - 0.5);
+
+            options.forEach(optText => {
+                const btn = document.createElement('div');
+                btn.className = 'seal-btn';
+                btn.innerText = optText;
+                btn.onclick = () => handleAnswer(optText, btn);
+                sealContainer.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(selectedAnswer, btnEl) {
+            if(isWaiting) return;
+            isWaiting = true;
+
+            playSound('stamp');
+            btnEl.style.transform = "scale(0.8)";
+            setTimeout(() => btnEl.style.transform = "scale(1)", 100);
+
+            const isCorrect = selectedAnswer === currentQuestionObj.a;
+            
+            if(isCorrect) {
+                stampEl.classList.add('approved');
+                score += 10;
+                // DOĞRU İSE HAVUZDAN SİL
+                questionPool.splice(currentIndexInPool, 1);
+            } else {
+                stampEl.classList.add('rejected');
+                // YANLIŞ İSE HAVUZDA KALSIN (Silme yok)
+            }
+            scoreEl.innerText = score;
+            remainingCountEl.innerText = questionPool.length;
+
+            setTimeout(() => {
+                showInfoModal(isCorrect);
+            }, 600);
+        }
+
+        function showInfoModal(isCorrect) {
+            playSound(isCorrect ? 'correct' : 'wrong');
+
+            if(isCorrect) {
+                modalStatus.innerText = "DOĞRU CEVAP";
+                modalStatus.className = "status-badge status-correct";
+                infoCard.style.borderLeftColor = "#27ae60";
+            } else {
+                modalStatus.innerText = "YANLIŞ CEVAP";
+                modalStatus.className = "status-badge status-wrong";
+                infoCard.style.borderLeftColor = "#c0392b";
+            }
+
+            modalTitle.innerText = currentQuestionObj.a; 
+            modalDesc.innerText = currentQuestionObj.info;
+
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            paperEl.style.animation = 'slideOut 0.5s forwards';
+            setTimeout(loadQuestion, 500);
+        }
+
+        function endGame() {
+            document.getElementById('final-score').innerText = score;
+            victoryScreen.style.display = 'flex';
+        }
+
+    </script>
+</body>
+</html>
